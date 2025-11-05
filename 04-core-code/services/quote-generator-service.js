@@ -100,7 +100,7 @@ export class QuoteGeneratorService {
         });
     <\/script>`;
 
-        // [MODIFIED] Script for GTH (Gmail Template HTML)
+        // [MODIFIED] Script for GTH (Gmail Template HTML) - Now includes GST toggle logic
         this.scriptHtmlGmail = `
     <div id="action-bar-gth" style="position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10001; padding: 10px; background: rgba(0,0,0,0.7); border-radius: 8px;">
         <button id="btn-copy-gth" style="padding: 10px 20px; font-size: 16px; font-weight: bold; color: #333; background-color: #fffacd; border: 1px solid #ccc; border-radius: 5px; cursor: pointer;">Copy2G</button>
@@ -163,9 +163,10 @@ export class QuoteGeneratorService {
                 // 2. Remove the action bar and this script from the clone
                 clone.querySelector('#action-bar-gth')?.remove();
                 clone.querySelector('script')?.remove();
+                // [FIX] Remove the title tag to prevent it from being pasted in Gmail
                 clone.querySelector('title')?.remove();
                 
-                // 3. Restore GST visibility in the clone before copying, if it was hidden
+                // [NEW] Restore GST visibility in the clone before copying, if it was hidden
                 const clonedGstRow = clone.querySelector('#gth-gst-row');
                 if (clonedGstRow && clonedGstRow.style.display === 'none') {
                     clonedGstRow.style.display = '';
@@ -179,24 +180,35 @@ export class QuoteGeneratorService {
                     clone.querySelector('#gth-balance').textContent = formatCurrency(grandTotal * 0.5);
                 }
 
-                // 4. Get the HTML source code of the clone
+                // 3. Get the HTML of the clone
                 const htmlToCopy = clone.outerHTML;
+                // [FIX] Get the innerText for the plain-text fallback
+                const textToCopy = clone.innerText || document.body.innerText;
 
-                // 5. [MODIFIED] Use navigator.writeText (copy as plain text source code)
-                // This is more reliable and what Gmail (desktop & mobile) expects.
-                navigator.clipboard.writeText(htmlToCopy)
-                    .then(function() {
-                        alert('Quote HTML Source copied to clipboard!');
-                        btn.textContent = 'Copy2G';
-                        btn.disabled = false;
-                    }).catch(function(err) {
-                        console.error('Failed to copy HTML source: ', err);
-                        alert('Error: Could not copy to clipboard. See console.');
-                        btn.textContent = 'Copy2G';
-                        btn.disabled = false;
-                    });
+                // 4. Create a Blob with Rich Text (HTML)
+                const blobHtml = new Blob([htmlToCopy], { type: 'text/html' });
+                // [FIX] Create a Blob with Plain Text
+                const blobText = new Blob([textToCopy], { type: 'text/plain' });
+                
+                // 5. Use the Clipboard API with BOTH HTML and Plain Text blobs
+                // This is crucial for mobile (especially iOS) compatibility.
+                navigator.clipboard.write([
+                    new ClipboardItem({
+                        'text/html': blobHtml,
+                        'text/plain': blobText
+                    })
+                ]).then(function() {
+                    alert('Quote copied to clipboard as Rich Text (HTML)!');
+                    btn.textContent = 'Copy2G';
+                    btn.disabled = false;
+                }).catch(function(err) {
+                    console.error('Failed to copy Rich Text: ', err);
+                    alert('Error: Could not copy to clipboard. See console.');
+                    btn.textContent = 'Copy2G';
+                    btn.disabled = false;
+                });
             } catch (err) {
-                console.error('Error preparing HTML source copy: ', err);
+                console.error('Error preparing Rich Text copy: ', err);
                 alert('An error occurred during copy. See console.');
                 btn.textContent = 'Copy2G';
                 btn.disabled = false;
@@ -313,8 +325,9 @@ export class QuoteGeneratorService {
     }
 
     _populateTemplate(template, data) {
-        // [FIX] Removed the faulty 'if (key === 'grandTotal' ...)' check.
-        // This function will now correctly replace all placeholders.
+        // [FIX] Removed the faulty 'typeof value === "number"' check.
+        // This function will now correctly replace all placeholders (like {{subtotal}})
+        // with their string values (like "$1306.80").
         return template.replace(/\{\{\{?([\w\-]+)\}\}\}?/g, (match, key) => {
             const value = data[key];
             // If the key exists in the data object and is not null/undefined, return its value.
