@@ -100,7 +100,7 @@ export class QuoteGeneratorService {
         });
     <\/script>`;
 
-        // [MODIFIED] Script for GTH (Gmail Template HTML) - Fixes syntax error and copy logic
+        // [MODIFIED] Script for GTH (Gmail Template HTML)
         this.scriptHtmlGmail = `
     <div id="action-bar-gth" style="position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10001; padding: 10px; background: rgba(0,0,0,0.7); border-radius: 8px;">
         <button id="btn-copy-gth" style="padding: 10px 20px; font-size: 16px; font-weight: bold; color: #333; background-color: #fffacd; border: 1px solid #ccc; border-radius: 5px; cursor: pointer;">Copy2G</button>
@@ -120,12 +120,13 @@ export class QuoteGeneratorService {
             }
 
             let isGstVisible = true;
+            // [MODIFIED] Read from data-our-offer and data-total
             const ourOffer = parseFloat(tableBody.dataset.ourOffer);
             const grandTotal = parseFloat(tableBody.dataset.total);
 
             const formatCurrency = (value) => {
-                if (isNaN(value)) return '\\$0.00'; // [FIX] Escaped $
-                return '\\$' + value.toFixed(2); // [FIX] Escaped $
+                if (isNaN(value)) return '$0.00';
+                return '$' + value.toFixed(2);
             };
 
             const updateValues = (includeGst) => {
@@ -136,6 +137,7 @@ export class QuoteGeneratorService {
                     balanceValueEl.textContent = formatCurrency(grandTotal * 0.5);
                 } else {
                     gstRow.style.display = 'none';
+                    // [MODIFIED] When GST is hidden, Total/Deposit/Balance are based on Our Offer
                     totalValueEl.textContent = formatCurrency(ourOffer);
                     depositValueEl.textContent = formatCurrency(ourOffer * 0.5);
                     balanceValueEl.textContent = formatCurrency(ourOffer * 0.5);
@@ -169,18 +171,19 @@ export class QuoteGeneratorService {
                     clonedGstRow.style.display = '';
                     // Restore original values
                     const tableBody = clone.querySelector('#gth-summary-table tbody');
-                    const grandTotal = parseFloat(tableBody.dataset.total);
-                    const formatCurrency = (value) => isNaN(value) ? '\\$0.00' : '\\$' + value.toFixed(2); // [FIX] Escaped $
+                    const grandTotal = parseFloat(tableBody.dataset.total); // Read correct data attribute
+                    const formatCurrency = (value) => isNaN(value) ? '$0.00' : '$' + value.toFixed(2);
 
                     clone.querySelector('#gth-total').textContent = formatCurrency(grandTotal);
                     clone.querySelector('#gth-deposit').textContent = formatCurrency(grandTotal * 0.5);
                     clone.querySelector('#gth-balance').textContent = formatCurrency(grandTotal * 0.5);
                 }
 
-                // 4. Get the HTML of the clone
+                // 4. Get the HTML source code of the clone
                 const htmlToCopy = clone.outerHTML;
-                
+
                 // 5. [MODIFIED] Use navigator.writeText (copy as plain text source code)
+                // This is more reliable and what Gmail (desktop & mobile) expects.
                 navigator.clipboard.writeText(htmlToCopy)
                     .then(function() {
                         alert('Quote HTML Source copied to clipboard!');
