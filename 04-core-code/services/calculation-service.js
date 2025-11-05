@@ -77,7 +77,6 @@ export class CalculationService {
                 [currentProductKey]: newProductData
             }
         };
-
         return { updatedQuoteData, firstError };
     }
 
@@ -239,7 +238,7 @@ export class CalculationService {
         const motorQtyF1 = items.filter(item => !!item.motor).length;
         const totalRemoteQtyF1 = uiState.driveRemoteCount || 0;
         const remote1chQtyF1 = f1State.remote_1ch_qty;
-        const remote16chQtyF1 = (f1State.remote_16ch_qty === null) ? totalRemoteQtyF1 - remote1chQtyF1 : f1State.remote_16ch_qty;
+        const remote16chQtyF1 = (f1State.remote_1ch_qty === null) ? totalRemoteQtyF1 - remote1chQtyF1 : f1State.remote_1ch_qty;
         const chargerQtyF1 = uiState.driveChargerCount || 0;
         const cordQtyF1 = uiState.driveCordCount || 0;
         const totalDualPairsF1 = Math.floor(items.filter(item => item.dual === 'D').length / 2);
@@ -283,29 +282,39 @@ export class CalculationService {
             eAcceSum,
             firstRbPrice,
             disRbPrice,
-            sumPrice,
+            sumPrice, // This is the F2 Subtotal (GST excluded)
             rbProfit,
             singleprofit,
             sumProfit,
-            gst,
+            gst, // This is the F2 Total (GST included)
             netProfit,
             mulTimes // [FIX] Add mulTimes to the return object so its value can be persisted.
         };
     }
 
     /**
-     * [NEW] Gathers all necessary data for the quote template.
-     * This method is the new home for the logic previously in QuoteGeneratorService._prepareTemplateData.
-     * @param {object} quoteData - The current quote data from the state.
-     * @param {object} ui - The current UI state.
-     * @param {object} f3Data - Data from the F3 form fields.
-     * @returns {object} A comprehensive data object ready for template population.
+     * [MODIFIED] Gathers all necessary data for the quote template.
+     * This method now calculates all final values based on the new GTH logic.
      */
     getQuoteTemplateData(quoteData, ui, f3Data) {
         const summaryData = this.calculateF2Summary(quoteData, ui);
-        const grandTotal = parseFloat(f3Data.finalOfferPrice) || summaryData.gst || 0;
         const items = quoteData.products.rollerBlind.items;
         const formatPrice = (price) => (typeof price === 'number' && price > 0) ? `$${price.toFixed(2)}` : '';
+
+        // --- [NEW] GTH/AQ Summary Logic ---
+        // This implements the logic: Total = F3 Override (if > 0) or F2 Subtotal
+        const f2Subtotal = summaryData.sumPrice || 0;
+        const f3OfferPrice = parseFloat(f3Data.finalOfferPrice) || 0;
+
+        // This is the "Our Offer" value
+        const ourOffer = (f3OfferPrice > 0) ? f3OfferPrice : f2Subtotal;
+
+        // Calculate all other values based on "Our Offer"
+        const gstAmount = ourOffer * 0.10;
+        const totalAmount = ourOffer + gstAmount; // This is the "Total" value
+        const depositAmount = totalAmount * 0.50;
+        const balanceAmount = totalAmount * 0.50;
+        // --- End New Logic ---
 
         const motorQty = items.filter(item => !!item.motor).length;
         const motorPrice = (this.configManager.getAccessoryPrice('motorStandard') || 0) * motorQty;
@@ -334,23 +343,33 @@ export class CalculationService {
             quoteId: f3Data.quoteId,
             issueDate: f3Data.issueDate,
             dueDate: f3Data.dueDate,
-            customerName: f3Data.customerName, // [NEW] Added for direct access in template
-            customerAddress: f3Data.customerAddress, // [NEW]
-            customerPhone: f3Data.customerPhone, // [NEW]
-            customerEmail: f3Data.customerEmail, // [NEW]
-            subtotal: `$${(summaryData.sumPrice || 0).toFixed(2)}`,
-            gst: `$${(grandTotal / 1.1 * 0.1).toFixed(2)}`,
-            grandTotal: `$${grandTotal.toFixed(2)}`,
-            deposit: `$${(grandTotal * 0.5).toFixed(2)}`,
-            balance: `$${(grandTotal * 0.5).toFixed(2)}`,
-            savings: `$${((summaryData.firstRbPrice || 0) - (summaryData.disRbPrice || 0)).toFixed(2)}`,
+            customerName: f3Data.customerName,
+            customerAddress: f3Data.customerAddress,
+            customerPhone: f3Data.customerPhone,
+            customerEmail: f3Data.customerEmail,
+
+            // [MODIFIED] Pass formatted values based on new logic
+            subtotal: `$${f2Subtotal.toFixed(2)}`,
+            ourOffer: `$${ourOffer.toFixed(2)}`,
+            gst: `$${gstAmount.toFixed(2)}`,
+            grandTotal: `$${totalAmount.toFixed(2)}`,
+            deposit: `$${depositAmount.toFixed(2)}`,
+            balance: `$${balanceAmount.toFixed(2)}`,
+
+            // [MODIFIED] Pass raw numbers for GTH script data attributes
+            rawOurOffer: ourOffer,
+            rawTotal: totalAmount,
+
+            // [DELETED] Savings is no longer used
+            // savings: `$${((summaryData.firstRbPrice || 0) - (summaryData.disRbPrice || 0)).toFixed(2)}`,
+
             generalNotes: (f3Data.generalNotes || '').replace(/\n/g, '<br>'),
             termsAndConditions: (f3Data.termsConditions || 'Standard terms and conditions apply.').replace(/\n/g, '<br>'),
-            
+
             // Data for the detailed list (Appendix)
             items: items,
             mulTimes: summaryData.mulTimes || 1,
-            
+
             // Data for the accessories table (Appendix)
             motorQty: motorQty || '',
             motorPrice: formatPrice(motorPrice),

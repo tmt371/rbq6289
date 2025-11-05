@@ -120,8 +120,9 @@ export class QuoteGeneratorService {
             }
 
             let isGstVisible = true;
-            const subtotal = parseFloat(tableBody.dataset.subtotal.replace(/[^0-9.-]+/g,""));
-            const grandTotal = parseFloat(tableBody.dataset.total.replace(/[^0-9.-]+/g,""));
+            // [MODIFIED] Read from data-our-offer and data-total
+            const ourOffer = parseFloat(tableBody.dataset.ourOffer);
+            const grandTotal = parseFloat(tableBody.dataset.total);
 
             const formatCurrency = (value) => {
                 if (isNaN(value)) return '$0.00';
@@ -136,9 +137,10 @@ export class QuoteGeneratorService {
                     balanceValueEl.textContent = formatCurrency(grandTotal * 0.5);
                 } else {
                     gstRow.style.display = 'none';
-                    totalValueEl.textContent = formatCurrency(subtotal);
-                    depositValueEl.textContent = formatCurrency(subtotal * 0.5);
-                    balanceValueEl.textContent = formatCurrency(subtotal * 0.5);
+                    // [MODIFIED] When GST is hidden, Total/Deposit/Balance are based on Our Offer
+                    totalValueEl.textContent = formatCurrency(ourOffer);
+                    depositValueEl.textContent = formatCurrency(ourOffer * 0.5);
+                    balanceValueEl.textContent = formatCurrency(ourOffer * 0.5);
                 }
             };
 
@@ -170,7 +172,7 @@ export class QuoteGeneratorService {
                     clonedGstRow.style.display = '';
                     // Restore original values
                     const tableBody = clone.querySelector('#gth-summary-table tbody');
-                    const grandTotal = parseFloat(tableBody.dataset.total.replace(/[^0-9.-]+/g,""));
+                    const grandTotal = parseFloat(tableBody.dataset.total); // Read correct data attribute
                     const formatCurrency = (value) => isNaN(value) ? '$0.00' : '$' + value.toFixed(2);
 
                     clone.querySelector('#gth-total').textContent = formatCurrency(grandTotal);
