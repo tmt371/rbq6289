@@ -1,7 +1,7 @@
 // File: 04-core-code/app-controller.js
 
 import { EVENTS, STORAGE_KEYS } from './config/constants.js';
-import * as uiActions from './actions/ui-actions.js'; 
+import * as uiActions from './actions/ui-actions.js';
 
 const AUTOSAVE_INTERVAL_MS = 60000;
 
@@ -19,7 +19,7 @@ export class AppController {
     }
 
     initialize() {
-        this._subscribeQuickQuoteEvents(); 
+        this._subscribeQuickQuoteEvents();
         this._subscribeDetailViewEvents();
         this._subscribeGlobalEvents();
         this._subscribeF1Events();
@@ -37,7 +37,7 @@ export class AppController {
     }
 
     _subscribeQuickQuoteEvents() {
-        const delegate = (handlerName, ...args) => this.quickQuoteView[handlerName](...args); 
+        const delegate = (handlerName, ...args) => this.quickQuoteView[handlerName](...args);
 
         this.eventAggregator.subscribe(EVENTS.NUMERIC_KEY_PRESSED, (data) => delegate('handleNumericKeyPress', data));
         this.eventAggregator.subscribe(EVENTS.USER_REQUESTED_INSERT_ROW, () => delegate('handleInsertRow'));
@@ -56,7 +56,7 @@ export class AppController {
         this.eventAggregator.subscribe(EVENTS.USER_REQUESTED_MULTI_TYPE_SET, () => delegate('handleMultiTypeSet'));
     }
 
-    _subscribeDetailViewEvents() { 
+    _subscribeDetailViewEvents() {
         const delegate = (handlerName, data) => {
             const { ui } = this.stateService.getState();
             if (ui.currentView === 'DETAIL_CONFIG') {
@@ -65,11 +65,11 @@ export class AppController {
         };
 
         this.eventAggregator.subscribe(EVENTS.TABLE_CELL_CLICKED, (data) => {
-            const { ui } = this.stateService.getState(); 
+            const { ui } = this.stateService.getState();
             if (ui.currentView === 'QUICK_QUOTE') {
                 this.quickQuoteView.handleTableCellClick(data);
             } else {
-                this.detailConfigView.handleTableCellClick(data); 
+                this.detailConfigView.handleTableCellClick(data);
             }
         });
         this.eventAggregator.subscribe(EVENTS.SEQUENCE_CELL_CLICKED, (data) => {
@@ -77,7 +77,7 @@ export class AppController {
             if (ui.currentView === 'QUICK_QUOTE') {
                 this.quickQuoteView.handleSequenceCellClick(data);
             } else {
-                this.detailConfigView.handleSequenceCellClick(data); 
+                this.detailConfigView.handleSequenceCellClick(data);
             }
         });
 
@@ -90,7 +90,7 @@ export class AppController {
         this.eventAggregator.subscribe(EVENTS.USER_REQUESTED_LF_DELETE_MODE, () => delegate('handleLFDeleteRequest'));
         // [NEW] Subscribe to SSet event
         this.eventAggregator.subscribe(EVENTS.USER_REQUESTED_SSET_MODE, () => delegate('handleSSetRequest'));
-        this.eventAggregator.subscribe(EVENTS.USER_TOGGLED_K3_EDIT_MODE, () => delegate('handleToggleK3EditMode')); 
+        this.eventAggregator.subscribe(EVENTS.USER_TOGGLED_K3_EDIT_MODE, () => delegate('handleToggleK3EditMode'));
         this.eventAggregator.subscribe(EVENTS.USER_REQUESTED_BATCH_CYCLE, (data) => delegate('handleBatchCycle', data));
 
         this.eventAggregator.subscribe(EVENTS.DUAL_CHAIN_MODE_CHANGED, (data) => delegate('handleDualChainModeChange', data));
@@ -110,11 +110,13 @@ export class AppController {
 
     _subscribeF1Events() {
         this.eventAggregator.subscribe(EVENTS.F1_TAB_ACTIVATED, () => this.workflowService.handleF1TabActivation());
-        this.eventAggregator.subscribe(EVENTS.F1_DISCOUNT_CHANGED, (data) => this.workflowService.handleF1DiscountChange(data)); 
+        this.eventAggregator.subscribe(EVENTS.F1_DISCOUNT_CHANGED, (data) => this.workflowService.handleF1DiscountChange(data));
     }
 
     _subscribeF3Events() {
         this.eventAggregator.subscribe(EVENTS.USER_REQUESTED_PRINTABLE_QUOTE, () => this.workflowService.handlePrintableQuoteRequest());
+        // [NEW] Subscribe to the GTH event
+        this.eventAggregator.subscribe(EVENTS.USER_REQUESTED_GMAIL_QUOTE, () => this.workflowService.handleGmailQuoteRequest());
     }
 
     // [NEW] Centralized subscription for all F4 actions, delegating to WorkflowService.
@@ -146,7 +148,7 @@ export class AppController {
             // Dispatch an action to update the inputValue in the UI state
             this.stateService.dispatch(uiActions.setInputValue(value));
         }
-    } 
+    }
 
     _startAutoSave() {
         if (this.autoSaveTimerId) { clearInterval(this.autoSaveTimerId); }
