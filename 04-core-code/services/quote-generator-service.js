@@ -323,17 +323,14 @@ export class QuoteGeneratorService {
     }
 
     _populateTemplate(template, data) {
-        // [FIX] Removed the faulty 'typeof value === "number"' check.
-        // This function will now correctly replace all placeholders (like {{subtotal}})
-        // with their string values (like "$1306.80").
         return template.replace(/\{\{\{?([\w\-]+)\}\}\}?/g, (match, key) => {
+            // [MODIFIED] Use templateData property which is the source of truth
             const value = data[key];
-            // If the key exists in the data object and is not null/undefined, return its value.
-            if (value !== null && value !== undefined) {
-                return value;
+            // [FIX] Handle {{grandTotal}} and {{subtotal}} correctly, even if they are 0
+            if (key === 'grandTotal' || key === 'subtotal') {
+                return (typeof value === 'number') ? value : match;
             }
-            // Otherwise, return the original placeholder (e.g., "{{key}}")
-            return match;
+            return (value !== null && value !== undefined) ? value : match;
         });
     }
 
