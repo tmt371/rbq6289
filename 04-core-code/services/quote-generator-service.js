@@ -184,8 +184,8 @@ export class QuoteGeneratorService {
 
         const templateData = this.calculationService.getQuoteTemplateData(quoteData, ui, f3Data);
 
-        // Generate the mobile-friendly, card-based item list
-        const itemsTableBody = this._generatePageOneItemsTableHtml(templateData);
+        // [MODIFIED] Call the GTH-specific "card" generator
+        const itemsTableBody = this._generateGTHItemsTableHtml(templateData);
 
         const populatedData = {
             ...templateData,
@@ -217,11 +217,13 @@ export class QuoteGeneratorService {
         // [REFACTORED] Delegate all data preparation to CalculationService.
         const templateData = this.calculationService.getQuoteTemplateData(quoteData, ui, f3Data);
 
-        // [REFACTORED] Generate HTML snippets using the prepared data.
+        // [MODIFIED] Ensure the correct generators are called for the AQ flow
         const populatedDataWithHtml = {
             ...templateData,
             customerInfoHtml: this._formatCustomerInfo(templateData),
-            itemsTableBody: this._generatePageOneItemsTableHtml(templateData),
+            // [FIX] Call the restored AQ-specific generator for the main page summary table
+            itemsTableBody: this._generateAQPageOneItemsTableHtml(templateData),
+            // [FIX] This call was already correct for the appendix page
             rollerBlindsTable: this._generateItemsTableHtml(templateData)
         };
 
@@ -271,6 +273,9 @@ export class QuoteGeneratorService {
         return html;
     }
 
+    /**
+     * [EXISTING - UNCHANGED] Generates the APPENDIX table for the AQ (PDF/Print) flow.
+     */
     _generateItemsTableHtml(templateData) {
         const { items, mulTimes } = templateData;
         const headers = ['#', 'F-NAME', 'F-COLOR', 'Location', 'HD', 'Dual', 'Motor', 'Price'];
@@ -338,7 +343,101 @@ export class QuoteGeneratorService {
         `;
     }
 
-    _generatePageOneItemsTableHtml(templateData) {
+    /**
+     * [RESTORED & RENAMED] Generates the multi-column SUMMARY table for the AQ (PDF/Print) flow.
+     * This is the logic from "my old.html".
+     */
+    _generateAQPageOneItemsTableHtml(templateData) {
+        const { summaryData, uiState, items } = templateData;
+        const rows = [];
+        const validItemCount = items.filter(i => i.width && i.height).length;
+
+        rows.push(`
+            <tr>
+                <td data-label="NO">1</td>
+                <td data-label="Description" class="description">Roller Blinds</td>
+                <td data-label="QTY" class="align-right">${validItemCount}</td>
+                <td data-label="Price" class="align-right">
+                    <span class="original-price">$${(summaryData.firstRbPrice || 0).toFixed(2)}</span>
+                </td>
+                <td data-label="Discounted Price" class="align-right">
+                    <span class="discounted-price">$${(summaryData.disRbPrice || 0).toFixed(2)}</span>
+                </td>
+            </tr>
+        `);
+
+        let itemNumber = 2;
+
+        if (summaryData.acceSum > 0) {
+            rows.push(`
+                <tr>
+                    <td data-label="NO">${itemNumber++}</td>
+                    <td data-label="Description" class="description">Installation Accessories</td>
+                    <td data-label="QTY" class="align-right">NA</td>
+                    <td data-label="Price" class="align-right">$${(summaryData.acceSum || 0).toFixed(2)}</td>
+                    <td data-label="Discounted Price" class="align-right">$${(summaryData.acceSum || 0).toFixed(2)}</td>
+                </tr>
+            `);
+        }
+
+        if (summaryData.eAcceSum > 0) {
+            rows.push(`
+                <tr>
+                    <td data-label="NO">${itemNumber++}</td>
+                    <td data-label="Description" class="description">Motorised Accessories</td>
+                    <td data-label="QTY" class="align-right">NA</td>
+                    <td data-label="Price" class="align-right">$${(summaryData.eAcceSum || 0).toFixed(2)}</td>
+                    <td data-label="Discounted Price" class="align-right">$${(summaryData.eAcceSum || 0).toFixed(2)}</td>
+                </tr>
+            `);
+        }
+
+        const deliveryExcluded = uiState.f2.deliveryFeeExcluded;
+        const deliveryPriceClass = deliveryExcluded ? 'class="align-right is-excluded"' : 'class="align-right"';
+        const deliveryDiscountedPrice = deliveryExcluded ? 0 : (summaryData.deliveryFee || 0);
+        rows.push(`
+            <tr>
+                <td data-label="NO">${itemNumber++}</td>
+                <td data-label="Description" class="description">Delivery</td>
+                <td data-label="QTY" class="align-right">${uiState.f2.deliveryQty || 1}</td>
+                <td data-label="Price" ${deliveryPriceClass}>$${(summaryData.deliveryFee || 0).toFixed(2)}</td>
+                <td data-label="Discounted Price" class="align-right">$${deliveryDiscountedPrice.toFixed(2)}</td>
+            </tr>
+        `);
+
+        const installExcluded = uiState.f2.installFeeExcluded;
+        const installPriceClass = installExcluded ? 'class="align-right is-excluded"' : 'class="align-right"';
+        const installDiscountedPrice = installExcluded ? 0 : (summaryData.installFee || 0);
+        rows.push(`
+            <tr>
+                <td data-label="NO">${itemNumber++}</td>
+                <td data-label="Description" class="description">Installation</td>
+                <td data-label="QTY" class="align-right">${validItemCount}</td>
+                <td data-label="Price" ${installPriceClass}>$${(summaryData.installFee || 0).toFixed(2)}</td>
+                <td data-label="Discounted Price" class="align-right">$${installDiscountedPrice.toFixed(2)}</td>
+            </tr>
+        `);
+
+        const removalExcluded = uiState.f2.removalFeeExcluded;
+        const removalPriceClass = removalExcluded ? 'class="align-right is-excluded"' : 'class="align-right"';
+        const removalDiscountedPrice = removalExcluded ? 0 : (summaryData.removalFee || 0);
+        rows.push(`
+            <tr>
+                <td data-label="NO">${itemNumber++}</td>
+                <td data-label="Description" class="description">Removal</td>
+                <td data-label="QTY" class="align-right">${uiState.f2.removalQty || 0}</td>
+                <td data-label="Price" ${removalPriceClass}>$${(summaryData.removalFee || 0).toFixed(2)}</td>
+                <td data-label="Discounted Price" class="align-right">$${removalDiscountedPrice.toFixed(2)}</td>
+            </tr>
+        `);
+
+        return rows.join('');
+    }
+
+    /**
+     * [NEW & RENAMED] Generates the "card-style" item list for the GTH (Gmail) flow.
+     */
+    _generateGTHItemsTableHtml(templateData) {
         const { summaryData, uiState, items } = templateData;
         const rows = [];
         const validItemCount = items.filter(i => i.width && i.height).length;
@@ -376,38 +475,39 @@ export class QuoteGeneratorService {
         // --- Card: Delivery ---
         const deliveryExcluded = uiState.f2.deliveryFeeExcluded;
         const deliveryOriginalPrice = formatPrice(summaryData.deliveryFee || 0, deliveryExcluded);
-        const deliveryFinalPrice = deliveryExcluded ? formatPrice(0) : formatPrice(summaryData.deliveryFee || 0);
+        const deliveryFinalPrice = deliveryExcluded ? 0 : (summaryData.deliveryFee || 0);
         rows.push(this._createGTHItemCard(
             `#${itemNumber++}`, 'Delivery',
             uiState.f2.deliveryQty || 1,
             deliveryOriginalPrice,
-            deliveryFinalPrice
+            formatPrice(deliveryFinalPrice) // Use formatPrice for GTH card
         ));
 
         // --- Card: Installation ---
         const installExcluded = uiState.f2.installFeeExcluded;
         const installOriginalPrice = formatPrice(summaryData.installFee || 0, installExcluded);
-        const installFinalPrice = installExcluded ? formatPrice(0) : formatPrice(summaryData.installFee || 0);
+        const installFinalPrice = installExcluded ? 0 : (summaryData.installFee || 0);
         rows.push(this._createGTHItemCard(
             `#${itemNumber++}`, 'Installation',
             validItemCount,
             installOriginalPrice,
-            installFinalPrice
+            formatPrice(installFinalPrice) // Use formatPrice for GTH card
         ));
 
         // --- Card: Removal ---
         const removalExcluded = uiState.f2.removalFeeExcluded;
         const removalOriginalPrice = formatPrice(summaryData.removalFee || 0, removalExcluded);
-        const removalFinalPrice = removalExcluded ? formatPrice(0) : formatPrice(summaryData.removalFee || 0);
+        const removalFinalPrice = removalExcluded ? 0 : (summaryData.removalFee || 0);
         rows.push(this._createGTHItemCard(
             `#${itemNumber++}`, 'Removal',
             uiState.f2.removalQty || 0,
             removalOriginalPrice,
-            removalFinalPrice
+            formatPrice(removalFinalPrice) // Use formatPrice for GTH card
         ));
 
         return rows.join('');
     }
+
 
     /**
      * [NEW] Helper function to generate the GTH card-style HTML for an item row.
