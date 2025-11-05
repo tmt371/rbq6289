@@ -118,17 +118,25 @@ export class QuoteGeneratorService {
                 // 2. Remove the action bar and this script from the clone
                 clone.querySelector('#action-bar-gth')?.remove();
                 clone.querySelector('script')?.remove();
+                // [FIX] Remove the title tag to prevent it from being pasted in Gmail
+                clone.querySelector('title')?.remove();
 
                 // 3. Get the HTML of the clone
                 const htmlToCopy = clone.outerHTML;
+                // [FIX] Get the innerText for the plain-text fallback
+                const textToCopy = clone.innerText || document.body.innerText;
 
                 // 4. Create a Blob with Rich Text (HTML)
-                const blob = new Blob([htmlToCopy], { type: 'text/html' });
+                const blobHtml = new Blob([htmlToCopy], { type: 'text/html' });
+                // [FIX] Create a Blob with Plain Text
+                const blobText = new Blob([textToCopy], { type: 'text/plain' });
                 
-                // 5. Use the Clipboard API with the HTML Blob
+                // 5. Use the Clipboard API with BOTH HTML and Plain Text blobs
+                // This is crucial for mobile (especially iOS) compatibility.
                 navigator.clipboard.write([
                     new ClipboardItem({
-                        'text/html': blob
+                        'text/html': blobHtml,
+                        'text/plain': blobText
                     })
                 ]).then(function() {
                     alert('Quote copied to clipboard as Rich Text (HTML)!');
