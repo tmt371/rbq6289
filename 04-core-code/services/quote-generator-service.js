@@ -100,55 +100,12 @@ export class QuoteGeneratorService {
         });
     <\/script>`;
 
-        // [MODIFIED] Script for GTH (Gmail Template HTML) - Now includes GST toggle logic
+        // [NEW] Script for GTH (Gmail Template HTML)
         this.scriptHtmlGmail = `
     <div id="action-bar-gth" style="position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10001; padding: 10px; background: rgba(0,0,0,0.7); border-radius: 8px;">
         <button id="btn-copy-gth" style="padding: 10px 20px; font-size: 16px; font-weight: bold; color: #333; background-color: #fffacd; border: 1px solid #ccc; border-radius: 5px; cursor: pointer;">Copy2G</button>
     </div>
     <script>
-        // --- [NEW] GST Toggle Logic ---
-        document.addEventListener('DOMContentLoaded', function() {
-            const gstRow = document.getElementById('gth-gst-row');
-            const totalValueEl = document.getElementById('gth-total');
-            const depositValueEl = document.getElementById('gth-deposit');
-            const balanceValueEl = document.getElementById('gth-balance');
-            const tableBody = document.getElementById('gth-summary-table')?.querySelector('tbody');
-
-            if (!gstRow || !totalValueEl || !depositValueEl || !balanceValueEl || !tableBody) {
-                console.warn('GTH: Could not find all elements for GST toggle.');
-                return;
-            }
-
-            let isGstVisible = true;
-            const subtotal = parseFloat(tableBody.dataset.subtotal.replace(/[^0-9.-]+/g,""));
-            const grandTotal = parseFloat(tableBody.dataset.total.replace(/[^0-9.-]+/g,""));
-
-            const formatCurrency = (value) => {
-                if (isNaN(value)) return '$0.00';
-                return '$' + value.toFixed(2);
-            };
-
-            const updateValues = (includeGst) => {
-                if (includeGst) {
-                    gstRow.style.display = '';
-                    totalValueEl.textContent = formatCurrency(grandTotal);
-                    depositValueEl.textContent = formatCurrency(grandTotal * 0.5);
-                    balanceValueEl.textContent = formatCurrency(grandTotal * 0.5);
-                } else {
-                    gstRow.style.display = 'none';
-                    totalValueEl.textContent = formatCurrency(subtotal);
-                    depositValueEl.textContent = formatCurrency(subtotal * 0.5);
-                    balanceValueEl.textContent = formatCurrency(subtotal * 0.5);
-                }
-            };
-
-            gstRow.addEventListener('click', function() {
-                isGstVisible = !isGstVisible;
-                updateValues(isGstVisible);
-            });
-        });
-
-        // --- Copy to Clipboard Logic ---
         document.getElementById('btn-copy-gth').addEventListener('click', function() {
             const btn = this;
             btn.textContent = 'Copying...';
@@ -163,20 +120,6 @@ export class QuoteGeneratorService {
                 clone.querySelector('script')?.remove();
                 // [FIX] Remove the title tag to prevent it from being pasted in Gmail
                 clone.querySelector('title')?.remove();
-                
-                // [NEW] Restore GST visibility in the clone before copying, if it was hidden
-                const clonedGstRow = clone.querySelector('#gth-gst-row');
-                if (clonedGstRow && clonedGstRow.style.display === 'none') {
-                    clonedGstRow.style.display = '';
-                    // Restore original values
-                    const tableBody = clone.querySelector('#gth-summary-table tbody');
-                    const grandTotal = parseFloat(tableBody.dataset.total.replace(/[^0-9.-]+/g,""));
-                    const formatCurrency = (value) => isNaN(value) ? '$0.00' : '$' + value.toFixed(2);
-
-                    clone.querySelector('#gth-total').textContent = formatCurrency(grandTotal);
-                    clone.querySelector('#gth-deposit').textContent = formatCurrency(grandTotal * 0.5);
-                    clone.querySelector('#gth-balance').textContent = formatCurrency(grandTotal * 0.5);
-                }
 
                 // 3. Get the HTML of the clone
                 const htmlToCopy = clone.outerHTML;
@@ -326,10 +269,6 @@ export class QuoteGeneratorService {
         return template.replace(/\{\{\{?([\w\-]+)\}\}\}?/g, (match, key) => {
             // [MODIFIED] Use templateData property which is the source of truth
             const value = data[key];
-            // [FIX] Handle {{grandTotal}} and {{subtotal}} correctly, even if they are 0
-            if (key === 'grandTotal' || key === 'subtotal') {
-                return (typeof value === 'number') ? value : match;
-            }
             return (value !== null && value !== undefined) ? value : match;
         });
     }
