@@ -33,6 +33,7 @@ export class F3QuotePrepView {
             },
             buttons: {
                 addQuote: query(`#${DOM_IDS.BTN_ADD_QUOTE}`),
+                gth: query(`#${DOM_IDS.BTN_GTH}`), // [NEW] Cache GTH button
             }
         };
     }
@@ -66,6 +67,13 @@ export class F3QuotePrepView {
             });
         }
 
+        // --- [NEW] GTH Button Listener ---
+        if (this.f3.buttons.gth) {
+            this.f3.buttons.gth.addEventListener('click', () => {
+                this.eventAggregator.publish(EVENTS.USER_REQUESTED_GMAIL_QUOTE);
+            });
+        }
+
         // --- Focus Jumping Logic ---
         const focusOrder = [
             'quoteId', 'issueDate', 'dueDate', 'customerName', 'customerAddress',
@@ -81,7 +89,7 @@ export class F3QuotePrepView {
                         if (event.key === 'Tab' && currentElement.tagName === 'TEXTAREA') {
                             return;
                         }
-                        
+
                         event.preventDefault();
                         event.stopPropagation(); // Stop the event from bubbling up
                         const nextIndex = index + 1;
@@ -116,7 +124,7 @@ export class F3QuotePrepView {
                 return dateString; // Fallback to whatever was saved
             }
         };
-        
+
         // Helper to update value only if it differs
         const updateInput = (input, newValue) => {
             const value = newValue || '';
@@ -152,12 +160,12 @@ export class F3QuotePrepView {
         updateInput(this.f3.inputs.quoteId, quoteId);
         updateInput(this.f3.inputs.issueDate, formatDate(issueDate));
         updateInput(this.f3.inputs.dueDate, formatDate(dueDate));
-        
+
         updateInput(this.f3.inputs.customerName, customer.name);
         updateInput(this.f3.inputs.customerAddress, customer.address);
         updateInput(this.f3.inputs.customerPhone, customer.phone);
         updateInput(this.f3.inputs.customerEmail, customer.email);
-        
+
         // Note: finalOfferPrice, generalNotes, termsConditions are not part of state
         // and retain their manually entered values.
     }

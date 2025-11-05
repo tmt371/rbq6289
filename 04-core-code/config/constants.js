@@ -21,6 +21,8 @@ export const EVENTS = {
 
     // --- [NEW] Quote Preview Workflow ---
     USER_REQUESTED_PRINTABLE_QUOTE: 'userRequestedPrintableQuote',
+    // [NEW] GTH Workflow
+    USER_REQUESTED_GMAIL_QUOTE: 'userRequestedGmailQuote',
     SHOW_QUOTE_PREVIEW: 'showQuotePreview',
 
     // --- User Actions: Quick Quote View ---
@@ -138,6 +140,7 @@ export const DOM_IDS = {
 
     // --- F3 Panel Elements ---
     BTN_ADD_QUOTE: 'btn-add-quote', // [NEW]
+    BTN_GTH: 'btn-gth', // [NEW] GTH Button
 
     // --- Dialog-specific Elements ---
     DIALOG_INPUT_1CH: 'dialog-input-1ch',
